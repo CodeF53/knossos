@@ -4,51 +4,61 @@
       <aside class="universal-card">
         <h1>Legal</h1>
         <NavStack>
-          <NavStackItem link="/legal/terms" label="Terms and Conditions">
-            <TermsIcon />
-          </NavStackItem>
-          <NavStackItem link="/legal/privacy" label="Privacy Policy">
-            <PrivacyIcon />
+          <NavStackItem link="/legal/terms" label="Terms of Use">
+            <HeartHandshakeIcon />
           </NavStackItem>
           <NavStackItem link="/legal/rules" label="Content Rules">
-            <RulesIcon />
+            <ScaleIcon />
+          </NavStackItem>
+          <NavStackItem link="/legal/copyright" label="Copyright Policy">
+            <CopyrightIcon />
           </NavStackItem>
           <NavStackItem link="/legal/security" label="Security Notice">
             <ShieldIcon />
+          </NavStackItem>
+
+          <h3>Privacy</h3>
+          <NavStackItem link="/legal/privacy" label="Privacy Policy">
+            <LockIcon />
+          </NavStackItem>
+          <NavStackItem link="/legal/ccpa" label="California Privacy Notice">
+            <InfoIcon />
+          </NavStackItem>
+
+          <h3>Rewards Program</h3>
+          <NavStackItem link="/legal/cmp" label="Rewards Program Terms">
+            <CurrencyIcon />
+          </NavStackItem>
+          <NavStackItem link="/legal/cmp-info" label="Rewards Program Info">
+            <InfoIcon />
           </NavStackItem>
         </NavStack>
       </aside>
     </div>
     <div class="normal-page__content">
-      <NuxtChild class="universal-card" />
+      <NuxtPage class="universal-card" :route="route" />
     </div>
   </div>
 </template>
 
-<script>
-import NavStack from '~/components/ui/NavStack'
-import NavStackItem from '~/components/ui/NavStackItem'
+<script setup>
+import {
+  InfoIcon,
+  HeartHandshakeIcon,
+  LockIcon,
+  ScaleIcon,
+  ShieldIcon,
+  CurrencyIcon,
+  CopyrightIcon,
+} from 'omorphia'
+import NavStack from '~/components/ui/NavStack.vue'
+import NavStackItem from '~/components/ui/NavStackItem.vue'
 
-import TermsIcon from '~/assets/images/utils/heart-handshake.svg?inline'
-import PrivacyIcon from '~/assets/images/utils/lock.svg?inline'
-import RulesIcon from '~/assets/images/sidebar/admin.svg?inline'
-import ShieldIcon from '~/assets/images/utils/shield.svg?inline'
-
-export default {
-  name: 'Settings',
-  components: {
-    NavStack,
-    NavStackItem,
-    TermsIcon,
-    PrivacyIcon,
-    RulesIcon,
-    ShieldIcon,
-  },
-}
+const route = useNativeRoute()
 </script>
 
 <style lang="scss" scoped>
-.normal-page__content ::v-deep a {
+.normal-page__content :deep(a) {
   color: var(--color-link);
   text-decoration: underline;
 

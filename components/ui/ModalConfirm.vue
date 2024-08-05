@@ -1,7 +1,7 @@
 <template>
   <Modal ref="modal" :header="title">
     <div class="modal-delete">
-      <div class="markdown-body" v-html="$xss($md.render(description))"></div>
+      <div class="markdown-body" v-html="renderString(description)" />
       <label v-if="hasToType" for="confirmation" class="confirmation-label">
         <span>
           <strong>To verify, type</strong>
@@ -24,11 +24,7 @@
           <CrossIcon />
           Cancel
         </button>
-        <button
-          class="iconified-button danger-button"
-          :disabled="action_disabled"
-          @click="proceed"
-        >
+        <button class="iconified-button danger-button" :disabled="action_disabled" @click="proceed">
           <TrashIcon />
           {{ proceedLabel }}
         </button>
@@ -38,12 +34,12 @@
 </template>
 
 <script>
-import CrossIcon from '~/assets/images/utils/x.svg?inline'
-import TrashIcon from '~/assets/images/utils/trash.svg?inline'
-import Modal from '~/components/ui/Modal'
+import { renderString } from 'omorphia'
+import CrossIcon from '~/assets/images/utils/x.svg?component'
+import TrashIcon from '~/assets/images/utils/trash.svg?component'
+import Modal from '~/components/ui/Modal.vue'
 
 export default {
-  name: 'ModalConfirm',
   components: {
     CrossIcon,
     TrashIcon,
@@ -73,6 +69,7 @@ export default {
       default: 'Proceed',
     },
   },
+  emits: ['proceed'],
   data() {
     return {
       action_disabled: this.hasToType,
@@ -80,6 +77,7 @@ export default {
     }
   },
   methods: {
+    renderString,
     cancel() {
       this.$refs.modal.hide()
     },
@@ -90,8 +88,7 @@ export default {
     type() {
       if (this.hasToType) {
         this.action_disabled =
-          this.confirmation_typed.toLowerCase() !==
-          this.confirmationText.toLowerCase()
+          this.confirmation_typed.toLowerCase() !== this.confirmationText.toLowerCase()
       }
     },
     show() {
@@ -117,6 +114,7 @@ export default {
 
   .confirmation-text {
     padding-right: 0.25ch;
+    margin: 0 0.25rem;
   }
 
   .confirmation-input {
@@ -124,11 +122,6 @@ export default {
       width: 20rem;
       max-width: 100%;
     }
-  }
-
-  .button-group {
-    margin-left: auto;
-    margin-top: 1.5rem;
   }
 }
 </style>

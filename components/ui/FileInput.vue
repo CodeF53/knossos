@@ -1,25 +1,26 @@
 <template>
   <label
     :class="{ 'long-style': longStyle }"
+    :disabled="disabled"
     @drop.prevent="handleDrop"
     @dragover.prevent
   >
-    <slot></slot>
+    <slot />
     {{ prompt }}
     <input
       type="file"
       :multiple="multiple"
       :accept="accept"
+      :disabled="disabled"
       @change="handleChange"
     />
   </label>
 </template>
 
 <script>
-import { fileIsValid } from '~/plugins/fileUtils'
+import { fileIsValid } from '~/helpers/fileUtils.js'
 
 export default {
-  name: 'FileInput',
   components: {},
   props: {
     prompt: {
@@ -53,7 +54,12 @@ export default {
       type: Boolean,
       default: false,
     },
+    disabled: {
+      type: Boolean,
+      default: false,
+    },
   },
+  emits: ['change'],
   data() {
     return {
       files: [],
@@ -61,12 +67,12 @@ export default {
   },
   methods: {
     addFiles(files, shouldNotReset) {
-      if (!shouldNotReset || this.shouldAlwaysReset) this.files = files
+      if (!shouldNotReset || this.shouldAlwaysReset) {
+        this.files = files
+      }
 
       const validationOptions = { maxSize: this.maxSize, alertOnInvalid: true }
-      this.files = [...this.files].filter((file) =>
-        fileIsValid(file, validationOptions)
-      )
+      this.files = [...this.files].filter((file) => fileIsValid(file, validationOptions))
 
       if (this.files.length > 0) {
         this.$emit('change', this.files)

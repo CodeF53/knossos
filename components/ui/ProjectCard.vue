@@ -1,10 +1,7 @@
 <template>
-  <article
-    class="project-card base-card padding-bg"
-    :aria-label="name"
-    role="listitem"
-  >
+  <article class="project-card base-card padding-bg" :aria-label="name" role="listitem">
     <nuxt-link
+      :title="name"
       class="icon"
       tabindex="-1"
       :to="`/${$getProjectTypeForUrl(type, categories)}/${id}`"
@@ -18,7 +15,7 @@
       :to="`/${$getProjectTypeForUrl(type, categories)}/${id}`"
       :style="color ? `background-color: ${toColor};` : ''"
     >
-      <img v-if="featuredImage" :src="featuredImage" alt="gallery image" />
+      <img v-if="featuredImage" :src="featuredImage" alt="gallery image" loading="lazy" />
     </nuxt-link>
     <div class="title">
       <nuxt-link :to="`/${$getProjectTypeForUrl(type, categories)}/${id}`">
@@ -28,29 +25,24 @@
       </nuxt-link>
       <p v-if="author" class="author">
         by
-        <nuxt-link class="title-link" :to="'/user/' + author"
-          >{{ author }}
+        <nuxt-link class="title-link" :to="'/user/' + author">
+          {{ author }}
         </nuxt-link>
       </p>
-      <Badge
-        v-if="status && status !== 'approved'"
-        :type="status"
-        class="status"
-      />
+      <Badge v-if="status && status !== 'approved'" :type="status" class="status" />
     </div>
     <p class="description">
       {{ description }}
     </p>
     <Categories
       :categories="
-        categories.filter(
-          (x) => !hideLoaders || !$tag.loaders.find((y) => y.name === x)
-        )
+        categories.filter((x) => !hideLoaders || !tags.loaders.find((y) => y.name === x))
       "
       :type="type"
       class="tags"
     >
       <EnvironmentIndicator
+        v-if="clientSide && serverSide"
         :type-only="moderation"
         :client-side="clientSide"
         :server-side="serverSide"
@@ -64,18 +56,14 @@
         <DownloadIcon aria-hidden="true" />
         <p>
           <strong>{{ $formatNumber(downloads) }}</strong
-          ><span class="stat-label">
-            download<span v-if="downloads !== '1'">s</span></span
-          >
+          ><span class="stat-label"> download<span v-if="downloads !== '1'">s</span></span>
         </p>
       </div>
       <div v-if="follows" class="stat">
         <HeartIcon aria-hidden="true" />
         <p>
           <strong>{{ $formatNumber(follows) }}</strong
-          ><span class="stat-label">
-            follower<span v-if="follows !== '1'">s</span></span
-          >
+          ><span class="stat-label"> follower<span v-if="follows !== '1'">s</span></span>
         </p>
       </div>
       <div class="buttons">
@@ -83,39 +71,36 @@
       </div>
       <div
         v-if="showUpdatedDate"
-        v-tooltip="$dayjs(updatedAt).format('MMMM D, YYYY [at] h:mm:ss A')"
+        v-tooltip="$dayjs(updatedAt).format('MMMM D, YYYY [at] h:mm A')"
         class="stat date"
       >
         <EditIcon aria-hidden="true" />
-        <span class="date-label">Updated </span
-        >{{ $dayjs(updatedAt).fromNow() }}
+        <span class="date-label">Updated </span>{{ fromNow(updatedAt) }}
       </div>
       <div
-        v-else
-        v-tooltip="$dayjs(createdAt).format('MMMM D, YYYY [at] h:mm:ss A')"
+        v-else-if="showCreatedDate"
+        v-tooltip="$dayjs(createdAt).format('MMMM D, YYYY [at] h:mm A')"
         class="stat date"
       >
         <CalendarIcon aria-hidden="true" />
-        <span class="date-label">Published </span
-        >{{ $dayjs(createdAt).fromNow() }}
+        <span class="date-label">Published </span>{{ fromNow(createdAt) }}
       </div>
     </div>
   </article>
 </template>
 
 <script>
-import Categories from '~/components/ui/search/Categories'
-import Badge from '~/components/ui/Badge'
-import EnvironmentIndicator from '~/components/ui/EnvironmentIndicator'
+import Categories from '~/components/ui/search/Categories.vue'
+import Badge from '~/components/ui/Badge.vue'
+import EnvironmentIndicator from '~/components/ui/EnvironmentIndicator.vue'
 
-import CalendarIcon from '~/assets/images/utils/calendar.svg?inline'
-import EditIcon from '~/assets/images/utils/updated.svg?inline'
-import DownloadIcon from '~/assets/images/utils/download.svg?inline'
-import HeartIcon from '~/assets/images/utils/heart.svg?inline'
-import Avatar from '~/components/ui/Avatar'
+import CalendarIcon from '~/assets/images/utils/calendar.svg?component'
+import EditIcon from '~/assets/images/utils/updated.svg?component'
+import DownloadIcon from '~/assets/images/utils/download.svg?component'
+import HeartIcon from '~/assets/images/utils/heart.svg?component'
+import Avatar from '~/components/ui/Avatar.vue'
 
 export default {
-  name: 'ProjectCard',
   components: {
     EnvironmentIndicator,
     Avatar,
@@ -214,6 +199,11 @@ export default {
       required: false,
       default: true,
     },
+    showCreatedDate: {
+      type: Boolean,
+      required: false,
+      default: true,
+    },
     hideLoaders: {
       type: Boolean,
       required: false,
@@ -224,6 +214,11 @@ export default {
       required: false,
       default: null,
     },
+  },
+  setup() {
+    const tags = useTags()
+
+    return { tags }
   },
   computed: {
     projectTypeDisplay() {
@@ -316,8 +311,7 @@ export default {
     img,
     svg {
       border-radius: var(--size-rounded-lg);
-      border: 4px solid var(--color-raised-bg);
-      border-bottom: none;
+      box-shadow: -2px -2px 0 2px var(--color-raised-bg), 2px -2px 0 2px var(--color-raised-bg);
     }
   }
 
@@ -420,7 +414,7 @@ export default {
 
   svg {
     width: auto;
-    color: var(--color-special-orange);
+    color: var(--color-orange);
     height: 1.5rem;
     margin-bottom: -0.25rem;
   }

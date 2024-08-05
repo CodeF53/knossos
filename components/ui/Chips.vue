@@ -4,7 +4,7 @@
       v-for="item in items"
       :key="item"
       class="iconified-button"
-      :class="{ selected: selected === item }"
+      :class="{ selected: selected === item, capitalize: capitalize }"
       @click="toggleItem(item)"
     >
       <CheckIcon v-if="selected === item" />
@@ -14,15 +14,14 @@
 </template>
 
 <script>
-import CheckIcon from '~/assets/images/utils/check.svg?inline'
+import CheckIcon from '~/assets/images/utils/check.svg?component'
 
 export default {
-  name: 'Chips',
   components: {
     CheckIcon,
   },
   props: {
-    value: {
+    modelValue: {
       required: true,
       type: String,
     },
@@ -38,14 +37,19 @@ export default {
       default: (x) => x,
       type: Function,
     },
+    capitalize: {
+      type: Boolean,
+      default: true,
+    },
   },
+  emits: ['update:modelValue'],
   computed: {
     selected: {
       get() {
-        return this.value
+        return this.modelValue
       },
       set(value) {
-        this.$emit('input', value)
+        this.$emit('update:modelValue', value)
       },
     },
   },
@@ -73,7 +77,9 @@ export default {
   flex-wrap: wrap;
 
   .iconified-button {
-    text-transform: capitalize;
+    &.capitalize {
+      text-transform: capitalize;
+    }
 
     svg {
       width: 1em;

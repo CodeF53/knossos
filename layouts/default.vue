@@ -1,19 +1,43 @@
 <template>
-  <div
-    ref="main_page"
-    class="layout"
-    :class="{ 'expanded-mobile-nav': isBrowseMenuOpen }"
-  >
+  <div ref="main_page" class="layout" :class="{ 'expanded-mobile-nav': isBrowseMenuOpen }">
+    <div
+      v-if="auth.user && !auth.user.email_verified && route.path !== '/auth/verify-email'"
+      class="email-nag"
+    >
+      <template v-if="auth.user.email">
+        <span>{{ formatMessage(verifyEmailBannerMessages.title) }}</span>
+        <button class="btn" @click="resendVerifyEmail">
+          {{ formatMessage(verifyEmailBannerMessages.action) }}
+        </button>
+      </template>
+      <template v-else>
+        <span>{{ formatMessage(addEmailBannerMessages.title) }}</span>
+        <nuxt-link class="btn" to="/settings/account">
+          <SettingsIcon />
+          {{ formatMessage(addEmailBannerMessages.action) }}
+        </nuxt-link>
+      </template>
+    </div>
+    <div
+      v-if="
+        config.public.apiBaseUrl.startsWith('https://staging-api.modrinth.com') &&
+        !cosmetics.hideStagingBanner
+      "
+      class="site-banner site-banner--warning"
+    >
+      <div class="site-banner__title">
+        <IssuesIcon />
+        <span>{{ formatMessage(stagingBannerMessages.title) }}</span>
+      </div>
+      <div class="site-banner__description">
+        {{ formatMessage(stagingBannerMessages.description) }}
+      </div>
+      <div class="site-banner__actions">
+        <Button transparent icon-only :action="hideStagingBanner"><XIcon /></Button>
+      </div>
+    </div>
     <header class="site-header" role="presentation">
       <section class="navbar columns" role="navigation">
-        <section class="skip column" role="presentation">
-          <a href="#main">Skip to Main Content</a>
-          <a
-            v-show="!!registeredSkipLink"
-            :href="(registeredSkipLink || {}).id"
-            >{{ (registeredSkipLink || {}).text }}</a
-          >
-        </section>
         <section class="logo column" role="presentation">
           <NuxtLink class="button-base" to="/" aria-label="Modrinth home page">
             <BrandTextLogo aria-hidden="true" class="text-logo" />
@@ -21,60 +45,28 @@
         </section>
         <section class="nav-group columns" role="presentation">
           <section class="nav" aria-label="Page links">
-            <NavRow
-              class="navigation"
-              :links="[
-                {
-                  label: 'Mods',
-                  href: '/mods',
-                },
-                {
-                  label: 'Plugins',
-                  href: '/plugins',
-                },
-                {
-                  label: 'Data Packs',
-                  href: '/datapacks',
-                },
-                {
-                  label: 'Shaders',
-                  href: '/shaders',
-                },
-                {
-                  label: 'Resource Packs',
-                  href: '/resourcepacks',
-                },
-                {
-                  label: 'Modpacks',
-                  href: '/modpacks',
-                },
-              ]"
-            />
+            <NavRow class="navigation" :links="navRoutes" />
           </section>
           <section class="column-grow user-outer" aria-label="Account links">
             <section class="user-controls">
               <nuxt-link
-                v-if="$auth.user"
-                to="/notifications"
+                v-if="auth.user"
+                to="/dashboard/notifications"
                 class="control-button button-transparent"
-                :class="{ bubble: $user.notifications.length > 0 }"
-                title="Notifications"
+                :title="formatMessage(commonMessages.notificationsLabel)"
               >
                 <NotificationIcon aria-hidden="true" />
               </nuxt-link>
               <button
                 class="control-button button-transparent"
-                title="Switch theme"
+                :title="formatMessage(messages.changeTheme)"
                 @click="changeTheme"
               >
-                <MoonIcon
-                  v-if="$colorMode.value === 'light'"
-                  aria-hidden="true"
-                />
+                <MoonIcon v-if="$colorMode.value === 'light'" aria-hidden="true" />
                 <SunIcon v-else aria-hidden="true" />
               </button>
               <div
-                v-if="$auth.user"
+                v-if="auth.user"
                 class="dropdown"
                 :class="{ closed: !isDropdownOpen }"
                 tabindex="0"
@@ -84,533 +76,686 @@
               >
                 <button class="control" value="Profile Dropdown">
                   <Avatar
-                    :src="$auth.user.avatar_url"
+                    :src="auth.user.avatar_url"
                     class="user-icon"
-                    alt="Your avatar"
+                    :alt="formatMessage(messages.yourAvatarAlt)"
                     aria-hidden="true"
                     circle
                   />
                   <DropdownIcon class="caret" />
                 </button>
                 <div class="content card">
-                  <NuxtLink
-                    class="item button-transparent"
-                    :to="`/user/${$auth.user.username}`"
-                  >
+                  <NuxtLink class="item button-transparent" :to="`/user/${auth.user.username}`">
                     <div class="title profile-link">
-                      <div class="username">@{{ $auth.user.username }}</div>
-                      <div class="prompt">Visit your profile</div>
+                      <div class="username">@{{ auth.user.username }}</div>
+                      <div class="prompt">{{ formatMessage(commonMessages.visitYourProfile) }}</div>
                     </div>
                   </NuxtLink>
                   <hr class="divider" />
-                  <button
-                    class="item button-transparent"
-                    @click="$refs.modal_creation.show()"
-                  >
+                  <button class="item button-transparent" @click="$refs.modal_creation.show()">
                     <PlusIcon class="icon" />
-                    <span class="title">Create a project</span>
+                    <span class="title">
+                      {{ formatMessage(commonMessages.createAProjectButton) }}
+                    </span>
                   </button>
                   <hr class="divider" />
-                  <NuxtLink class="item button-transparent" to="/notifications">
+                  <NuxtLink class="item button-transparent" to="/dashboard/collections">
+                    <LibraryIcon class="icon" />
+                    <span class="title">{{ formatMessage(commonMessages.collectionsLabel) }}</span>
+                  </NuxtLink>
+                  <NuxtLink class="item button-transparent" to="/dashboard/notifications">
                     <NotificationIcon class="icon" />
-                    <span class="title">Notifications</span>
+                    <span class="title">{{
+                      formatMessage(commonMessages.notificationsLabel)
+                    }}</span>
                   </NuxtLink>
                   <NuxtLink class="item button-transparent" to="/dashboard">
                     <ChartIcon class="icon" />
-                    <span class="title">Dashboard</span
-                    ><span class="beta-badge">BETA</span>
-                  </NuxtLink>
-                  <NuxtLink
-                    class="item button-transparent"
-                    to="/settings/follows"
-                  >
-                    <HeartIcon class="icon" />
-                    <span class="title">Following</span>
+                    <span class="title">{{ formatMessage(commonMessages.dashboardLabel) }}</span>
                   </NuxtLink>
                   <NuxtLink class="item button-transparent" to="/settings">
                     <SettingsIcon class="icon" />
-                    <span class="title">Settings</span>
+                    <span class="title">{{ formatMessage(commonMessages.settingsLabel) }}</span>
                   </NuxtLink>
                   <NuxtLink
-                    v-if="$tag.staffRoles.includes($auth.user.role)"
+                    v-if="tags.staffRoles.includes(auth.user.role)"
                     class="item button-transparent"
                     to="/moderation"
                   >
                     <ModerationIcon class="icon" />
-                    <span class="title">Moderation</span>
+                    <span class="title">{{ formatMessage(commonMessages.moderationLabel) }}</span>
+                  </NuxtLink>
+                  <NuxtLink v-if="flags.developerMode" class="item button-transparent" to="/flags">
+                    <ReportIcon class="icon" />
+                    <span class="title">Feature flags</span>
+                  </NuxtLink>
+                  <NuxtLink
+                    v-if="!cosmetics.hideModrinthAppPromos"
+                    class="item button-transparent primary-color"
+                    to="/app"
+                  >
+                    <DownloadIcon class="icon" />
+                    <span class="title">
+                      {{ formatMessage(messages.getModrinthApp) }}
+                    </span>
                   </NuxtLink>
                   <hr class="divider" />
-                  <button class="item button-transparent" @click="logout">
+                  <button class="item button-transparent" @click="logoutUser()">
                     <LogOutIcon class="icon" />
-                    <span class="dropdown-item__text">Log out</span>
+                    <span class="dropdown-item__text">
+                      {{ formatMessage(commonMessages.signOutButton) }}
+                    </span>
                   </button>
                 </div>
               </div>
               <section v-else class="auth-prompt">
-                <a
-                  :href="authUrl"
-                  class="log-in-button header-button brand-button"
-                  rel="noopener noreferrer nofollow"
+                <nuxt-link class="iconified-button raised-button" to="/auth/sign-in">
+                  <LogInIcon /> {{ formatMessage(commonMessages.signInButton) }}
+                </nuxt-link>
+                <nuxt-link
+                  v-if="$route.path !== '/app' && !cosmetics.hideModrinthAppPromos"
+                  class="btn btn-outline btn-primary app-btn"
+                  to="/app"
                 >
-                  <GitHubIcon aria-hidden="true" />
-                  Sign in with GitHub</a
-                >
+                  <DownloadIcon /> {{ formatMessage(messages.getModrinthApp) }}
+                </nuxt-link>
               </section>
             </section>
           </section>
         </section>
       </section>
-      <section class="mobile-navbar" :class="{ expanded: isBrowseMenuOpen }">
-        <div class="top-row">
+      <section class="mobile-navigation">
+        <div
+          class="nav-menu nav-menu-browse"
+          :class="{ expanded: isBrowseMenuOpen }"
+          @focusin="isBrowseMenuOpen = true"
+          @focusout="isBrowseMenuOpen = false"
+        >
+          <div class="links cascade-links">
+            <NuxtLink
+              v-for="navRoute in navRoutes"
+              :key="navRoute.href"
+              :to="navRoute.href"
+              class="iconified-button"
+            >
+              {{ navRoute.label }}
+            </NuxtLink>
+          </div>
+        </div>
+        <div
+          class="nav-menu nav-menu-mobile"
+          :class="{ expanded: isMobileMenuOpen }"
+          @focusin="isMobileMenuOpen = true"
+          @focusout="isMobileMenuOpen = false"
+        >
+          <div class="account-container">
+            <NuxtLink
+              v-if="auth.user"
+              :to="`/user/${auth.user.username}`"
+              class="iconified-button account-button"
+            >
+              <Avatar
+                :src="auth.user.avatar_url"
+                class="user-icon"
+                :alt="formatMessage(messages.yourAvatarAlt)"
+                aria-hidden="true"
+                circle
+              />
+              <div class="account-text">
+                <div>@{{ auth.user.username }}</div>
+                <div>{{ formatMessage(commonMessages.visitYourProfile) }}</div>
+              </div>
+            </NuxtLink>
+            <nuxt-link v-else class="iconified-button brand-button" to="/auth/sign-in">
+              <LogInIcon /> {{ formatMessage(commonMessages.signInButton) }}
+            </nuxt-link>
+          </div>
+          <div class="links">
+            <template v-if="auth.user">
+              <button class="iconified-button danger-button" @click="logoutUser()">
+                <LogOutIcon aria-hidden="true" />
+                {{ formatMessage(commonMessages.signOutButton) }}
+              </button>
+              <button class="iconified-button" @click="$refs.modal_creation.show()">
+                <PlusIcon aria-hidden="true" />
+                {{ formatMessage(commonMessages.createAProjectButton) }}
+              </button>
+              <NuxtLink class="iconified-button" to="/dashboard/collections">
+                <LibraryIcon class="icon" />
+                {{ formatMessage(commonMessages.collectionsLabel) }}
+              </NuxtLink>
+              <NuxtLink
+                v-if="auth.user.role === 'moderator' || auth.user.role === 'admin'"
+                class="iconified-button"
+                to="/moderation"
+              >
+                <ModerationIcon aria-hidden="true" />
+                {{ formatMessage(commonMessages.moderationLabel) }}
+              </NuxtLink>
+              <NuxtLink v-if="flags.developerMode" class="iconified-button" to="/flags">
+                <ReportIcon aria-hidden="true" />
+                Feature flags
+              </NuxtLink>
+            </template>
+            <NuxtLink class="iconified-button" to="/settings">
+              <SettingsIcon aria-hidden="true" />
+              {{ formatMessage(commonMessages.settingsLabel) }}
+            </NuxtLink>
+            <button class="iconified-button" @click="changeTheme">
+              <MoonIcon v-if="$colorMode.value === 'light'" class="icon" />
+              <SunIcon v-else class="icon" />
+              <span class="dropdown-item__text">
+                {{ formatMessage(messages.changeTheme) }}
+              </span>
+            </button>
+          </div>
+        </div>
+        <div class="mobile-navbar" :class="{ expanded: isBrowseMenuOpen || isMobileMenuOpen }">
           <NuxtLink
             to="/"
             class="tab button-animation"
-            @click.native="isBrowseMenuOpen = false"
+            :title="formatMessage(navMenuMessages.home)"
           >
             <HomeIcon />
           </NuxtLink>
-          <div class="spacer"></div>
           <button
-            class="tab browse button-animation"
+            class="tab button-animation"
+            :class="{ 'router-link-exact-active': isBrowseMenuOpen }"
+            :title="formatMessage(navMenuMessages.search)"
             @click="toggleBrowseMenu()"
           >
-            <DropdownIcon :class="{ closed: !isBrowseMenuOpen }" />
-            <span>Browse</span>
+            <template v-if="auth.user">
+              <SearchIcon />
+            </template>
+            <template v-else>
+              <SearchIcon class="smaller" />
+              {{ formatMessage(navMenuMessages.search) }}
+            </template>
           </button>
-          <div class="spacer"></div>
-          <button class="tab button-animation" @click="toggleMobileMenu()">
-            <HamburgerIcon v-if="!isMobileMenuOpen" />
-            <CrossIcon v-else />
-          </button>
-        </div>
-        <div
-          :class="{ 'disable-children': !isBrowseMenuOpen }"
-          class="project-types"
-        >
-          <NuxtLink
-            :tabindex="isBrowseMenuOpen ? 0 : -1"
-            to="/mods"
-            class="tab iconified-button"
-            @click.native="isBrowseMenuOpen = false"
-          >
-            <span>Mods</span>
-          </NuxtLink>
-          <NuxtLink
-            :tabindex="isBrowseMenuOpen ? 0 : -1"
-            to="/plugins"
-            class="tab iconified-button"
-            @click.native="isBrowseMenuOpen = false"
-          >
-            <span>Plugins</span>
-          </NuxtLink>
-          <NuxtLink
-            :tabindex="isBrowseMenuOpen ? 0 : -1"
-            to="/datapacks"
-            class="tab iconified-button"
-            @click.native="isBrowseMenuOpen = false"
-          >
-            <span>Data Packs</span>
-          </NuxtLink>
-          <NuxtLink
-            :tabindex="isBrowseMenuOpen ? 0 : -1"
-            to="/shaders"
-            class="tab iconified-button"
-            @click.native="isBrowseMenuOpen = false"
-          >
-            <span>Shaders</span>
-          </NuxtLink>
-          <NuxtLink
-            :tabindex="isBrowseMenuOpen ? 0 : -1"
-            to="/resourcepacks"
-            class="tab iconified-button"
-            @click.native="isBrowseMenuOpen = false"
-          >
-            <span>Resource Packs</span>
-          </NuxtLink>
-          <NuxtLink
-            :tabindex="isBrowseMenuOpen ? 0 : -1"
-            to="/modpacks"
-            class="tab iconified-button"
-            @click.native="isBrowseMenuOpen = false"
-          >
-            <span>Modpacks</span>
-          </NuxtLink>
-        </div>
-      </section>
-      <section class="mobile-menu" :class="{ active: isMobileMenuOpen }">
-        <div class="mobile-menu-wrapper">
-          <div class="items-container rows">
+          <template v-if="auth.user">
             <NuxtLink
-              v-if="$auth.user"
-              class="iconified-button raised-button user-item"
-              :to="`/user/${$auth.user.username}`"
+              to="/dashboard/notifications"
+              class="tab button-animation"
+              :class="{
+                'no-active': isMobileMenuOpen || isBrowseMenuOpen,
+              }"
+              :title="formatMessage(commonMessages.notificationsLabel)"
+              @click="
+                () => {
+                  isMobileMenuOpen = false
+                  isBrowseMenuOpen = false
+                }
+              "
             >
-              <img
-                :src="$auth.user.avatar_url"
-                class="user-icon"
-                aria-hidden="true"
-                alt="User profile icon"
-              />
-              <div class="profile-link">
-                <div class="username">@{{ $auth.user.username }}</div>
-                <div class="prompt">Visit your profile</div>
-              </div>
-            </NuxtLink>
-            <button
-              v-if="$auth.user"
-              class="iconified-button raised-button"
-              @click="$refs.modal_creation.show()"
-            >
-              <PlusIcon class="icon" />
-              <span class="dropdown-item__text">Create a project</span>
-            </button>
-            <NuxtLink
-              v-if="$auth.user"
-              class="iconified-button raised-button"
-              to="/notifications"
-            >
-              <NotificationIcon class="icon" />
-              <span class="dropdown-item__text">Notifications</span>
+              <NotificationIcon />
             </NuxtLink>
             <NuxtLink
-              v-if="$auth.user"
-              class="iconified-button raised-button"
               to="/dashboard"
+              class="tab button-animation"
+              :title="formatMessage(commonMessages.dashboardLabel)"
             >
-              <ChartIcon class="icon" />
-              <span class="dropdown-item__text">Dashboard</span>
-              <span class="beta-badge">BETA</span>
+              <ChartIcon />
             </NuxtLink>
-            <NuxtLink
-              v-if="$auth.user"
-              class="iconified-button raised-button"
-              to="/settings/follows"
-            >
-              <HeartIcon class="icon" />
-              <span class="dropdown-item__text">Following</span>
-            </NuxtLink>
-            <NuxtLink class="iconified-button raised-button" to="/settings">
-              <SettingsIcon class="icon" />
-              <span class="dropdown-item__text">Settings</span>
-            </NuxtLink>
-            <NuxtLink
-              v-if="$auth.user && $tag.staffRoles.includes($auth.user.role)"
-              class="iconified-button raised-button"
-              to="/moderation"
-            >
-              <ModerationIcon class="icon" />
-              <span class="dropdown-item__text">Moderation</span>
-            </NuxtLink>
-            <button class="iconified-button raised-button" @click="changeTheme">
-              <MoonIcon v-if="$colorMode.value === 'light'" class="icon" />
-              <SunIcon v-else class="icon" />
-              <span class="dropdown-item__text">Change theme</span>
-            </button>
-            <button
-              v-if="$auth.user"
-              class="iconified-button danger-button"
-              @click="logout"
-            >
-              <LogOutIcon class="icon" />
-              <span class="dropdown-item__text">Log out</span>
-            </button>
-            <a v-else :href="authUrl" class="iconified-button brand-button">
-              <GitHubIcon aria-hidden="true" />
-              Sign in with GitHub</a
-            >
-          </div>
+          </template>
+          <button
+            class="tab button-animation"
+            :title="formatMessage(messages.toggleMenu)"
+            @click="toggleMobileMenu()"
+          >
+            <template v-if="!auth.user">
+              <HamburgerIcon v-if="!isMobileMenuOpen" />
+              <CrossIcon v-else />
+            </template>
+            <template v-else>
+              <Avatar
+                :src="auth.user.avatar_url"
+                class="user-icon"
+                :class="{ expanded: isMobileMenuOpen }"
+                :alt="formatMessage(messages.yourAvatarAlt)"
+                aria-hidden="true"
+                circle
+              />
+            </template>
+          </button>
         </div>
       </section>
     </header>
     <main>
-      <ModalCreation ref="modal_creation" />
-      <notifications
-        group="main"
-        position="bottom right"
-        :max="5"
-        :class="{ 'browse-menu-open': isBrowseMenuOpen }"
-        :ignore-duplicates="true"
-        :duration="10000"
-      />
-      <Nuxt id="main" />
+      <ModalCreation v-if="auth.user" ref="modal_creation" />
+      <slot id="main" />
     </main>
     <footer>
       <div class="logo-info" role="region" aria-label="Modrinth information">
-        <BrandTextLogo aria-hidden="true" class="text-logo" />
+        <BrandTextLogo
+          aria-hidden="true"
+          class="text-logo button-base"
+          @click="developerModeIncrement()"
+        />
         <p>
-          Modrinth is
-          <a
-            :target="$external()"
-            href="https://github.com/modrinth"
-            class="text-link"
-            rel="noopener noreferrer nofollow"
-          >
-            open source</a
-          >.
+          <IntlFormatted :message-id="footerMessages.openSource">
+            <template #github-link="{ children }">
+              <a
+                :target="$external()"
+                href="https://github.com/modrinth"
+                class="text-link"
+                rel="noopener"
+              >
+                <component :is="() => children" />
+              </a>
+            </template>
+          </IntlFormatted>
         </p>
         <p>
-          {{ owner }}/{{ slug }} {{ branch }}@<a
+          {{ config.public.owner }}/{{ config.public.slug }} {{ config.public.branch }}@<a
             :target="$external()"
-            :href="'https://github.com/' + owner + '/' + slug + '/tree/' + hash"
+            :href="
+              'https://github.com/' +
+              config.public.owner +
+              '/' +
+              config.public.slug +
+              '/tree/' +
+              config.public.hash
+            "
             class="text-link"
-            rel="noopener noreferrer nofollow"
-            >{{ hash.substring(0, 7) }}</a
+            rel="noopener"
+            >{{ config.public.hash.substring(0, 7) }}</a
           >
         </p>
         <p>© Rinth, Inc.</p>
       </div>
       <div class="links links-1" role="region" aria-label="Legal">
-        <h4 aria-hidden="true">Company</h4>
-        <nuxt-link to="/legal/terms">Terms</nuxt-link>
-        <nuxt-link to="/legal/privacy">Privacy</nuxt-link>
-        <nuxt-link to="/legal/rules">Rules</nuxt-link>
+        <h4 aria-hidden="true">{{ formatMessage(footerMessages.companyTitle) }}</h4>
+        <nuxt-link to="/legal/terms"> {{ formatMessage(footerMessages.terms) }}</nuxt-link>
+        <nuxt-link to="/legal/privacy"> {{ formatMessage(footerMessages.privacy) }}</nuxt-link>
+        <nuxt-link to="/legal/rules"> {{ formatMessage(footerMessages.rules) }}</nuxt-link>
         <a :target="$external()" href="https://careers.modrinth.com">
-          Careers
+          {{ formatMessage(footerMessages.careers) }}
+          <span v-if="false" class="count-bubble">0</span>
         </a>
       </div>
       <div class="links links-2" role="region" aria-label="Resources">
-        <h4 aria-hidden="true">Resources</h4>
-        <a :target="$external()" href="https://blog.modrinth.com">Blog</a>
-        <a :target="$external()" href="https://docs.modrinth.com">Docs</a>
-        <a :target="$external()" href="https://status.modrinth.com">Status</a>
-        <a
-          rel="noopener noreferrer nofollow"
-          :target="$external()"
-          href="https://github.com/modrinth"
-          >GitHub</a
-        >
+        <h4 aria-hidden="true">{{ formatMessage(footerMessages.resourcesTitle) }}</h4>
+        <a :target="$external()" href="https://support.modrinth.com">
+          {{ formatMessage(footerMessages.support) }}
+        </a>
+        <a :target="$external()" href="https://blog.modrinth.com">
+          {{ formatMessage(footerMessages.blog) }}
+        </a>
+        <a :target="$external()" href="https://docs.modrinth.com">
+          {{ formatMessage(footerMessages.docs) }}
+        </a>
+        <a :target="$external()" href="https://status.modrinth.com">
+          {{ formatMessage(footerMessages.status) }}
+        </a>
       </div>
       <div class="links links-3" role="region" aria-label="Interact">
-        <h4 aria-hidden="true">Interact</h4>
-        <a
-          rel="noopener noreferrer nofollow"
-          :target="$external()"
-          href="https://discord.gg/EUHuJHt"
-        >
-          Discord
-        </a>
-        <a
-          rel="noopener noreferrer nofollow"
-          :target="$external()"
-          href="https://twitter.com/modrinth"
-        >
-          Twitter
-        </a>
-        <a
-          rel="noopener noreferrer nofollow"
-          :target="$external()"
-          href="https://floss.social/@modrinth"
-        >
-          Mastodon
-        </a>
-        <a
-          rel="noopener noreferrer nofollow"
-          :target="$external()"
-          href="https://crowdin.com/project/modrinth"
-        >
+        <h4 aria-hidden="true">{{ formatMessage(footerMessages.interactTitle) }}</h4>
+        <a rel="noopener" :target="$external()" href="https://discord.modrinth.com"> Discord </a>
+        <a rel="noopener" :target="$external()" href="https://x.com/modrinth"> X (Twitter) </a>
+        <a rel="noopener" :target="$external()" href="https://floss.social/@modrinth"> Mastodon </a>
+        <a rel="noopener" :target="$external()" href="https://crowdin.com/project/modrinth">
           Crowdin
         </a>
       </div>
       <div class="buttons">
+        <nuxt-link class="btn btn-outline btn-primary" to="/app">
+          <DownloadIcon aria-hidden="true" />
+          {{ formatMessage(messages.getModrinthApp) }}
+        </nuxt-link>
         <button class="iconified-button raised-button" @click="changeTheme">
           <MoonIcon v-if="$colorMode.value === 'light'" aria-hidden="true" />
           <SunIcon v-else aria-hidden="true" />
-          Change theme
+          {{ formatMessage(messages.changeTheme) }}
         </button>
         <nuxt-link class="iconified-button raised-button" to="/settings">
           <SettingsIcon aria-hidden="true" />
-          Settings
+          {{ formatMessage(commonMessages.settingsLabel) }}
         </nuxt-link>
       </div>
       <div class="not-affiliated-notice">
-        NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
-        MOJANG.
+        {{ formatMessage(footerMessages.legalDisclaimer) }}
       </div>
     </footer>
   </div>
 </template>
+<script setup>
+import {
+  LogInIcon,
+  DownloadIcon,
+  LibraryIcon,
+  XIcon,
+  IssuesIcon,
+  Button,
+  ReportIcon,
+} from 'omorphia'
+import HamburgerIcon from '~/assets/images/utils/hamburger.svg?component'
+import CrossIcon from '~/assets/images/utils/x.svg?component'
+import SearchIcon from '~/assets/images/utils/search.svg?component'
 
-<script>
-import ClickOutside from 'vue-click-outside'
+import NotificationIcon from '~/assets/images/sidebar/notifications.svg?component'
+import SettingsIcon from '~/assets/images/sidebar/settings.svg?component'
+import ModerationIcon from '~/assets/images/sidebar/admin.svg?component'
+import HomeIcon from '~/assets/images/sidebar/home.svg?component'
 
-import HamburgerIcon from '~/assets/images/utils/hamburger.svg?inline'
-import CrossIcon from '~/assets/images/utils/x.svg?inline'
+import MoonIcon from '~/assets/images/utils/moon.svg?component'
+import SunIcon from '~/assets/images/utils/sun.svg?component'
+import PlusIcon from '~/assets/images/utils/plus.svg?component'
+import DropdownIcon from '~/assets/images/utils/dropdown.svg?component'
+import LogOutIcon from '~/assets/images/utils/log-out.svg?component'
+import ChartIcon from '~/assets/images/utils/chart.svg?component'
 
-import NotificationIcon from '~/assets/images/sidebar/notifications.svg?inline'
-import SettingsIcon from '~/assets/images/sidebar/settings.svg?inline'
-import ModerationIcon from '~/assets/images/sidebar/admin.svg?inline'
-import HomeIcon from '~/assets/images/sidebar/home.svg?inline'
+import NavRow from '~/components/ui/NavRow.vue'
+import ModalCreation from '~/components/ui/ModalCreation.vue'
+import Avatar from '~/components/ui/Avatar.vue'
+import { getProjectTypeMessage } from '~/utils/i18n-project-type.ts'
+import { commonMessages } from '~/utils/common-messages.ts'
+import { DARK_THEMES } from '~/composables/theme.js'
 
-import MoonIcon from '~/assets/images/utils/moon.svg?inline'
-import SunIcon from '~/assets/images/utils/sun.svg?inline'
-import PlusIcon from '~/assets/images/utils/plus.svg?inline'
-import DropdownIcon from '~/assets/images/utils/dropdown.svg?inline'
-import LogOutIcon from '~/assets/images/utils/log-out.svg?inline'
-import HeartIcon from '~/assets/images/utils/heart.svg?inline'
-import ChartIcon from '~/assets/images/utils/chart.svg?inline'
+const { formatMessage } = useVIntl()
 
-import GitHubIcon from '~/assets/images/utils/github.svg?inline'
-import NavRow from '~/components/ui/NavRow'
-import ModalCreation from '~/components/ui/ModalCreation'
-import Avatar from '~/components/ui/Avatar'
+const app = useNuxtApp()
+const auth = await useAuth()
+const cosmetics = useCosmetics()
+const flags = useFeatureFlags()
+const tags = useTags()
 
-export default {
-  components: {
-    Avatar,
-    ModalCreation,
-    NavRow,
-    MoonIcon,
-    SunIcon,
-    LogOutIcon,
-    GitHubIcon,
-    NotificationIcon,
-    HomeIcon,
-    CrossIcon,
-    HamburgerIcon,
-    SettingsIcon,
-    ModerationIcon,
-    PlusIcon,
-    DropdownIcon,
-    HeartIcon,
-    ChartIcon,
+const config = useRuntimeConfig()
+const route = useNativeRoute()
+const link = config.public.siteUrl + route.path.replace(/\/+$/, '')
+
+const verifyEmailBannerMessages = defineMessages({
+  title: {
+    id: 'layout.banner.verify-email.title',
+    defaultMessage: 'For security purposes, please verify your email address on Modrinth.',
   },
-  directives: {
-    ClickOutside,
+  action: {
+    id: 'layout.banner.verify-email.action',
+    defaultMessage: 'Re-send verification email',
   },
-  data() {
-    return {
-      isDropdownOpen: false,
-      owner: process.env.owner || 'modrinth',
-      slug: process.env.slug || 'knossos',
-      branch: process.env.branch || 'master',
-      hash: process.env.hash || 'unknown',
-      isMobileMenuOpen: false,
-      isBrowseMenuOpen: false,
-      registeredSkipLink: null,
-      hideDropdown: false,
-    }
-  },
-  async fetch() {
-    await Promise.all([
-      this.$store.dispatch('user/fetchAll', { force: true }),
-      this.$store.dispatch('cosmetics/fetchCosmetics', this.$cookies),
-    ])
-  },
-  head() {
-    const link = process.env.domain + this.$route.path.replace(/\/+$/, '')
+})
 
-    return {
-      link: [
-        {
-          rel: 'canonical',
-          href: link,
-        },
-      ],
-      meta: [
-        {
-          hid: 'og:url',
-          name: 'og:url',
-          content: link,
-        },
-      ],
-    }
+const addEmailBannerMessages = defineMessages({
+  title: {
+    id: 'layout.banner.add-email.title',
+    defaultMessage: 'For security purposes, please enter your email on Modrinth.',
   },
-  computed: {
-    authUrl() {
-      return `${process.env.authURLBase}auth/init?url=${process.env.domain}${this.$route.path}`
+  action: {
+    id: 'layout.banner.add-email.button',
+    defaultMessage: 'Visit account settings',
+  },
+})
+
+const stagingBannerMessages = defineMessages({
+  title: {
+    id: 'layout.banner.staging.title',
+    defaultMessage: 'You’re viewing Modrinth’s staging environment.',
+  },
+  description: {
+    id: 'layout.banner.staging.description',
+    defaultMessage:
+      'The staging environment is running on a copy of the production Modrinth database. This is used for testing and debugging purposes, and may be running in-development versions of the Modrinth backend or frontend newer than the production instance.',
+  },
+})
+
+const navMenuMessages = defineMessages({
+  home: {
+    id: 'layout.nav.home',
+    defaultMessage: 'Home',
+  },
+  search: {
+    id: 'layout.nav.search',
+    defaultMessage: 'Search',
+  },
+})
+
+const messages = defineMessages({
+  toggleMenu: {
+    id: 'layout.menu-toggle.action',
+    defaultMessage: 'Toggle menu',
+  },
+  yourAvatarAlt: {
+    id: 'layout.avatar.alt',
+    defaultMessage: 'Your avatar',
+  },
+  getModrinthApp: {
+    id: 'layout.action.get-modrinth-app',
+    defaultMessage: 'Get Modrinth App',
+  },
+  changeTheme: {
+    id: 'layout.action.change-theme',
+    defaultMessage: 'Change theme',
+  },
+})
+
+const footerMessages = defineMessages({
+  openSource: {
+    id: 'layout.footer.open-source',
+    defaultMessage: 'Modrinth is <github-link>open source</github-link>.',
+  },
+  companyTitle: {
+    id: 'layout.footer.company.title',
+    defaultMessage: 'Company',
+  },
+  terms: {
+    id: 'layout.footer.company.terms',
+    defaultMessage: 'Terms',
+  },
+  privacy: {
+    id: 'layout.footer.company.privacy',
+    defaultMessage: 'Privacy',
+  },
+  rules: {
+    id: 'layout.footer.company.rules',
+    defaultMessage: 'Rules',
+  },
+  careers: {
+    id: 'layout.footer.company.careers',
+    defaultMessage: 'Careers',
+  },
+  resourcesTitle: {
+    id: 'layout.footer.resources.title',
+    defaultMessage: 'Resources',
+  },
+  support: {
+    id: 'layout.footer.resources.support',
+    defaultMessage: 'Support',
+  },
+  blog: {
+    id: 'layout.footer.resources.blog',
+    defaultMessage: 'Blog',
+  },
+  docs: {
+    id: 'layout.footer.resources.docs',
+    defaultMessage: 'Docs',
+  },
+  status: {
+    id: 'layout.footer.resources.status',
+    defaultMessage: 'Status',
+  },
+  interactTitle: {
+    id: 'layout.footer.interact.title',
+    defaultMessage: 'Interact',
+  },
+  legalDisclaimer: {
+    id: 'layout.footer.legal-disclaimer',
+    defaultMessage:
+      'NOT AN OFFICIAL MINECRAFT SERVICE. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.',
+  },
+})
+
+useHead({
+  link: [
+    {
+      rel: 'canonical',
+      href: link,
     },
-  },
-  watch: {
-    $route() {
-      this.isMobileMenuOpen = false
-      this.$store.dispatch('user/fetchAll')
+  ],
+})
+useSeoMeta({
+  title: 'Modrinth',
+  description: () =>
+    formatMessage({
+      id: 'layout.meta.description',
+      defaultMessage:
+        'Download Minecraft mods, plugins, datapacks, shaders, resourcepacks, and modpacks on Modrinth. ' +
+        'Discover and publish projects on Modrinth with a modern, easy to use interface and API.',
+    }),
+  publisher: 'Modrinth',
+  themeColor: '#1bd96a',
+  colorScheme: 'dark light',
 
-      if (process.client) {
-        document.body.style.overflowY = 'scroll'
-        document.body.setAttribute('tabindex', '-1')
-        document.body.removeAttribute('tabindex')
-      }
-    },
+  // OpenGraph
+  ogTitle: 'Modrinth',
+  ogSiteName: 'Modrinth',
+  ogDescription: () =>
+    formatMessage({
+      id: 'layout.meta.og-description',
+      defaultMessage: 'Discover and publish Minecraft content!',
+    }),
+  ogType: 'website',
+  ogImage: 'https://cdn.modrinth.com/modrinth-new.png',
+  ogUrl: link,
+
+  // Twitter
+  twitterCard: 'summary',
+  twitterSite: '@modrinth',
+})
+
+const developerModeCounter = ref(0)
+
+const isDropdownOpen = ref(false)
+const isMobileMenuOpen = ref(false)
+const isBrowseMenuOpen = ref(false)
+const navRoutes = computed(() => [
+  {
+    label: formatMessage(getProjectTypeMessage('mod', true)),
+    href: '/mods',
   },
-  async beforeCreate() {
-    if (this.$route.query.code) {
-      await this.$router.push(this.$route.path)
+  {
+    label: formatMessage(getProjectTypeMessage('plugin', true)),
+    href: '/plugins',
+  },
+  {
+    label: formatMessage(getProjectTypeMessage('datapack', true)),
+    href: '/datapacks',
+  },
+  {
+    label: formatMessage(getProjectTypeMessage('shader', true)),
+    href: '/shaders',
+  },
+  {
+    label: formatMessage(getProjectTypeMessage('resourcepack', true)),
+    href: '/resourcepacks',
+  },
+  {
+    label: formatMessage(getProjectTypeMessage('modpack', true)),
+    href: '/modpacks',
+  },
+])
+
+onMounted(() => {
+  if (window && process.client) {
+    window.history.scrollRestoration = 'auto'
+  }
+
+  runAnalytics()
+})
+
+watch(
+  () => route.path,
+  () => {
+    isMobileMenuOpen.value = false
+    isBrowseMenuOpen.value = false
+
+    if (process.client) {
+      document.body.style.overflowY = 'scroll'
+      document.body.setAttribute('tabindex', '-1')
+      document.body.removeAttribute('tabindex')
     }
-  },
-  created() {
-    this.$nuxt.$on('registerSkipLink', (data) => {
-      this.registeredSkipLink = data
+
+    updateCurrentDate()
+    runAnalytics()
+  }
+)
+
+function developerModeIncrement() {
+  if (developerModeCounter.value >= 5) {
+    flags.value.developerMode = !flags.value.developerMode
+    developerModeCounter.value = 0
+    saveFeatureFlags()
+    if (flags.value.developerMode) {
+      app.$notify({
+        group: 'main',
+        title: 'Developer mode activated',
+        text: 'Developer mode has been enabled',
+        type: 'success',
+      })
+    } else {
+      app.$notify({
+        group: 'main',
+        title: 'Developer mode deactivated',
+        text: 'Developer mode has been disabled',
+        type: 'success',
+      })
+    }
+  } else {
+    developerModeCounter.value++
+  }
+}
+
+async function logoutUser() {
+  await logout()
+}
+
+function runAnalytics() {
+  const config = useRuntimeConfig()
+  const replacedUrl = config.public.apiBaseUrl.replace('v2/', '')
+
+  setTimeout(() => {
+    $fetch(`${replacedUrl}analytics/view`, {
+      method: 'POST',
+      body: {
+        url: window.location.href,
+      },
+      headers: {
+        Authorization: auth.value.token,
+      },
     })
-  },
-  methods: {
-    toggleMobileMenu() {
-      window.scrollTo(0, 0)
-      document.body.scrollTop = 0
+      .then(() => {})
+      .catch(() => {})
+  })
+}
+function toggleMobileMenu() {
+  isMobileMenuOpen.value = !isMobileMenuOpen.value
+  if (isMobileMenuOpen.value) {
+    isBrowseMenuOpen.value = false
+  }
+}
+function toggleBrowseMenu() {
+  isBrowseMenuOpen.value = !isBrowseMenuOpen.value
 
-      this.isMobileMenuOpen = !this.isMobileMenuOpen
+  if (isBrowseMenuOpen.value) {
+    isMobileMenuOpen.value = false
+  }
+}
+function changeTheme() {
+  updateTheme(
+    DARK_THEMES.includes(app.$colorMode.value)
+      ? 'light'
+      : cosmetics.value.preferredDarkTheme ?? 'dark',
+    true
+  )
+}
 
-      if (this.isMobileMenuOpen) {
-        document.body.style.overflowY = 'hidden'
-        this.isBrowseMenuOpen = false
-      } else {
-        document.body.style.overflowY = 'scroll'
-      }
-    },
-    toggleBrowseMenu() {
-      this.isBrowseMenuOpen = !this.isBrowseMenuOpen
-
-      if (this.isBrowseMenuOpen) {
-        this.isMobileMenuOpen = false
-      }
-    },
-    async logout() {
-      this.$cookies.set('auth-token-reset', true)
-      // If users logs out on dashboard, force redirect on the home page to clear cookies
-      if (this.$route.path.startsWith('/settings/')) {
-        window.location.href = '/settings'
-      } else {
-        await this.$router.go(null)
-
-        this.$notify({
-          group: 'main',
-          title: 'Logged Out',
-          text: 'You have logged out successfully!',
-          type: 'success',
-        })
-      }
-    },
-    changeTheme() {
-      this.$colorMode.preference =
-        this.$colorMode.value === 'dark' ? 'light' : 'dark'
-    },
-  },
+function hideStagingBanner() {
+  cosmetics.value.hideStagingBanner = true
+  saveCosmetics()
 }
 </script>
 
 <style lang="scss">
-.skip a {
-  clip: rect(1px, 1px, 1px, 1px);
-  height: 1px;
-  overflow: hidden;
-  position: absolute;
-  white-space: nowrap;
-  width: 1px;
-}
-
-.skip a:focus {
-  clip: auto;
-  height: auto;
-  overflow: auto;
-  position: absolute;
-  width: auto;
-  padding: 0.5rem 0.75rem;
-  background-color: var(--color-brand);
-  color: var(--color-brand-inverted);
-  border-radius: var(--size-rounded-max);
-  margin: 0 0.5rem 0 0;
-  box-shadow: inset 0px -1px 1px rgba(17, 24, 39, 0.1);
-  z-index: 1;
-}
+@import '~/assets/styles/global.scss';
+@import 'omorphia/dist/style.css';
 
 .layout {
   min-height: 100vh;
@@ -626,9 +771,12 @@ export default {
   }
 
   .site-header {
-    margin-top: var(--spacing-card-md);
-    margin-bottom: var(--spacing-card-md);
     max-width: 100vw;
+
+    @media screen and (min-width: 1024px) {
+      margin-top: var(--spacing-card-md);
+      margin-bottom: var(--spacing-card-md);
+    }
 
     @media screen and (min-width: 1280px) {
       border-radius: var(--size-rounded-sm);
@@ -648,10 +796,20 @@ export default {
         display: flex;
         justify-content: space-between;
         color: var(--color-text-dark);
+        z-index: 5;
 
         a {
           align-items: center;
           display: flex;
+
+          &:not(:focus-visible) {
+            outline: none;
+
+            &.router-link-exact-active {
+              outline: 2px solid transparent;
+              border-radius: 0.25rem;
+            }
+          }
         }
 
         .small-logo {
@@ -679,6 +837,7 @@ export default {
       section.nav-group {
         display: flex;
         flex-grow: 5;
+        z-index: 5;
 
         section.nav {
           flex-grow: 5;
@@ -729,7 +888,7 @@ export default {
           top: 50%;
           transform: translateY(-50%);
           min-width: 6rem;
-          gap: 1rem;
+          gap: 0.25rem;
 
           .control-button {
             position: relative;
@@ -759,7 +918,7 @@ export default {
               }
             }
 
-            //&.nuxt-link-exact-active {
+            //&.router-link-exact-active {
             //  color: var(--color-button-text-active);
             //  background-color: var(--color-button-bg);
             //}
@@ -779,6 +938,7 @@ export default {
               display: flex;
               justify-content: center;
               padding: 0;
+              outline: none;
 
               .user-icon {
                 height: 2rem;
@@ -807,8 +967,7 @@ export default {
               transform: scaleY(0.9);
               transform-origin: top;
               transition: all 0.1s ease-in-out 0.05s, color 0s ease-in-out 0s,
-                background-color 0s ease-in-out 0s,
-                border-color 0s ease-in-out 0s;
+                background-color 0s ease-in-out 0s, border-color 0s ease-in-out 0s;
               visibility: hidden;
               width: max-content;
               z-index: 1;
@@ -828,8 +987,9 @@ export default {
                 box-sizing: border-box;
                 color: inherit;
                 display: flex;
-                padding: 0.5rem;
+                padding: 0.5rem 0.75rem;
                 width: 100%;
+                outline: none;
 
                 .icon {
                   margin-right: 0.5rem;
@@ -837,9 +997,19 @@ export default {
                   width: 20px;
                 }
 
-                &.nuxt-link-exact-active {
+                &.router-link-exact-active {
                   color: var(--color-button-text-active);
                   background-color: var(--color-button-bg);
+                  outline: 2px solid transparent;
+
+                  &.primary-color {
+                    color: var(--color-button-text-active);
+                    background-color: var(--color-brand-highlight);
+                  }
+                }
+
+                &.primary-color {
+                  color: var(--color-brand);
                 }
               }
 
@@ -876,6 +1046,7 @@ export default {
           align-items: center;
           height: 100%;
           margin: 0;
+          gap: 0.5rem;
 
           .log-in-button {
             margin: 0 auto;
@@ -888,74 +1059,175 @@ export default {
       }
     }
 
-    .mobile-navbar {
+    .mobile-navigation {
       display: none;
-      width: 100%;
-      transition: height 0.25s ease-in-out;
-      height: var(--size-mobile-navbar-height);
-      padding-bottom: env(safe-area-inset-bottom);
-      position: fixed;
-      left: 0;
-      bottom: 0;
-      background-color: var(--color-raised-bg);
-      box-shadow: 0 0 20px 2px rgba(0, 0, 0, 0.3);
-      z-index: 6;
-      flex-direction: column;
-      border-radius: var(--size-rounded-card) var(--size-rounded-card) 0 0;
 
-      overflow: hidden;
+      .nav-menu {
+        width: 100%;
+        position: fixed;
+        bottom: calc(var(--size-mobile-navbar-height) - var(--size-rounded-card));
+        padding-bottom: var(--size-rounded-card);
+        left: 0;
+        background-color: var(--color-raised-bg);
+        z-index: 6;
+        transform: translateY(100%);
+        transition: transform 0.4s cubic-bezier(0.54, 0.84, 0.42, 1);
+        border-radius: var(--size-rounded-card) var(--size-rounded-card) 0 0;
+        box-shadow: 0 0 20px 2px rgba(0, 0, 0, 0);
 
-      .tab {
-        background: none;
-        display: flex;
-        flex-basis: 0;
-        justify-content: center;
-        align-items: center;
-        flex-direction: row;
-        gap: 0.25rem;
-        font-weight: bold;
-        padding: 0;
-        transition: color ease-in-out 0.15s;
-        color: var(--color-text-inactive);
-        text-align: center;
+        .links,
+        .account-container {
+          display: grid;
+          grid-template-columns: repeat(1, 1fr);
+          grid-gap: 1rem;
+          justify-content: center;
+          padding: 1rem;
 
-        svg {
-          height: 1.75rem;
-          width: 1.75rem;
+          .iconified-button {
+            width: 100%;
+            max-width: 500px;
+            padding: 0.75rem;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 1rem;
+            margin: 0 auto;
+          }
         }
 
-        &:hover,
-        &:focus {
-          color: var(--color-text);
+        .cascade-links {
+          @media screen and (min-width: 354px) {
+            grid-template-columns: repeat(2, 1fr);
+          }
+          @media screen and (min-width: 674px) {
+            grid-template-columns: repeat(3, 1fr);
+          }
         }
 
-        &.nuxt-link-exact-active {
-          svg {
-            color: var(--color-brand);
+        &-browse {
+          &.expanded {
+            transform: translateY(0);
+            box-shadow: 0 0 20px 2px rgba(0, 0, 0, 0.3);
+          }
+        }
+
+        &-mobile {
+          .account-container {
+            padding-bottom: 0;
+
+            .account-button {
+              padding: var(--spacing-card-md);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 0.5rem;
+
+              .user-icon {
+                width: 2.25rem;
+                height: 2.25rem;
+              }
+
+              .account-text {
+                flex-grow: 0;
+              }
+            }
           }
 
-          color: var(--color-text);
+          &.expanded {
+            transform: translateY(0);
+            box-shadow: 0 0 20px 2px rgba(0, 0, 0, 0.3);
+          }
         }
       }
 
-      .top-row {
-        min-height: var(--size-mobile-navbar-height);
+      .mobile-navbar {
         display: flex;
+        height: calc(var(--size-mobile-navbar-height) + env(safe-area-inset-bottom));
+        border-radius: var(--size-rounded-card) var(--size-rounded-card) 0 0;
+        padding-bottom: env(safe-area-inset-bottom);
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        background-color: var(--color-raised-bg);
+        box-shadow: 0 0 20px 2px rgba(0, 0, 0, 0.3);
+        z-index: 7;
         width: 100%;
+        align-items: center;
+        justify-content: space-between;
+        transition: border-radius 0.3s ease-out;
+        border-top: 2px solid rgba(0, 0, 0, 0);
+        box-sizing: border-box;
 
-        .browse {
-          flex-grow: 10;
-
-          svg {
-            transition: transform 0.125s ease-in-out;
-
-            &.closed {
-              transform: rotate(180deg);
-            }
-          }
+        &.expanded {
+          box-shadow: none;
+          border-radius: 0;
         }
 
         .tab {
+          position: relative;
+          background: none;
+          display: flex;
+          flex-basis: 0;
+          justify-content: center;
+          align-items: center;
+          flex-direction: row;
+          gap: 0.25rem;
+          font-weight: bold;
+          padding: 0;
+          transition: color ease-in-out 0.15s;
+          color: var(--color-text-inactive);
+          text-align: center;
+
+          &.browse {
+            svg {
+              transform: rotate(180deg);
+              transition: transform ease-in-out 0.3s;
+
+              &.closed {
+                transform: rotate(0deg);
+              }
+            }
+          }
+
+          &.bubble {
+            &::after {
+              background-color: var(--color-brand);
+              border-radius: var(--size-rounded-max);
+              content: '';
+              height: 0.5rem;
+              position: absolute;
+              left: 1.5rem;
+              top: 0;
+              width: 0.5rem;
+            }
+          }
+
+          svg {
+            height: 1.75rem;
+            width: 1.75rem;
+
+            &.smaller {
+              width: 1.25rem;
+              height: 1.25rem;
+            }
+          }
+
+          .user-icon {
+            width: 2rem;
+            height: 2rem;
+            transition: border ease-in-out 0.15s;
+            border: 0 solid var(--color-brand);
+            box-sizing: border-box;
+
+            &.expanded {
+              border: 2px solid var(--color-brand);
+            }
+          }
+
+          &:hover,
+          &:focus {
+            color: var(--color-text);
+          }
+
           &:first-child {
             margin-left: 2rem;
           }
@@ -963,134 +1235,19 @@ export default {
           &:last-child {
             margin-right: 2rem;
           }
-        }
 
-        .spacer {
-          flex-grow: 1;
-        }
-      }
+          &.router-link-exact-active:not(&.no-active) {
+            svg {
+              color: var(--color-brand);
+            }
 
-      .disable-children {
-        a {
-          pointer-events: none;
-        }
-      }
-
-      .project-types {
-        margin-top: 0.5rem;
-        display: flex;
-        justify-content: center;
-        flex-wrap: wrap;
-        row-gap: 0.5rem;
-        margin-inline: var(--spacing-card-sm);
-
-        .tab {
-          flex: 0 0 fit-content;
-          background-color: var(--color-button-bg);
-          padding: 0.4rem 1.25rem;
-          margin: 0 0.25rem;
-          max-height: unset;
-
-          &.nuxt-link-exact-active {
-            color: var(--color-brand-inverted);
-            background-color: var(--color-brand);
+            color: var(--color-brand);
           }
         }
       }
 
       @media screen and (max-width: 1095px) {
         display: flex;
-      }
-
-      &.expanded {
-        height: var(--size-mobile-navbar-height-expanded);
-
-        &::after {
-          top: var(--size-mobile-navbar-height-expanded);
-        }
-      }
-
-      &::after {
-        content: '';
-        background: var(--color-raised-bg);
-        width: 100%;
-        height: 50px;
-        position: absolute;
-        top: var(--size-mobile-navbar-height);
-        left: 0;
-        transition: top 0.25s ease-in-out;
-      }
-    }
-  }
-
-  .mobile-menu {
-    display: none;
-    position: absolute;
-    top: 0;
-    left: 0;
-    background-color: var(--color-bg);
-    height: 100%;
-    width: 100%;
-    z-index: 5;
-
-    .mobile-menu-wrapper {
-      max-height: calc(100vh - var(--size-mobile-navbar-height));
-      margin-bottom: var(--size-mobile-navbar-height);
-      overflow-y: auto;
-      margin-top: auto;
-
-      .items-container {
-        margin: 1rem 2rem;
-
-        .iconified-button {
-          box-sizing: border-box;
-          padding: 0.85rem 1.5rem;
-          align-items: center;
-          justify-content: center;
-          display: flex;
-          column-gap: 0.25rem;
-          width: 100%;
-          max-width: 20rem;
-          max-height: unset;
-
-          svg {
-            height: 1.25rem;
-            width: 1.25rem;
-          }
-
-          &.nuxt-link-exact-active {
-            color: var(--color-brand-inverted);
-            background-color: var(--color-brand);
-
-            .beta-badge {
-              background-color: var(--color-brand-inverted);
-              color: var(--color-text-dark);
-            }
-          }
-
-          &.user-item {
-            flex-direction: column;
-            row-gap: 0.5rem;
-            width: fit-content;
-            max-width: 16rem;
-            flex-grow: 0;
-            padding-inline: 3rem;
-
-            .profile-link {
-              text-align: center;
-
-              .prompt {
-                color: var(--color-text-secondary);
-              }
-            }
-
-            .user-icon {
-              width: 4rem;
-              height: 4rem;
-              border-radius: var(--size-rounded-max);
-            }
-          }
-        }
       }
     }
 
@@ -1170,7 +1327,7 @@ export default {
         border-radius: 5rem;
         background: var(--color-brand);
         color: var(--color-text-inverted);
-        padding: 0 0.25rem;
+        padding: 0 0.35rem;
         margin-left: 0.25rem;
       }
     }
@@ -1242,5 +1399,60 @@ export default {
     }
   }
 }
+
+.email-nag {
+  background-color: var(--color-raised-bg);
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 0.5rem 1rem;
+}
+
+.site-banner--warning {
+  background-color: var(--color-red-bg);
+  border-bottom: 2px solid var(--color-red);
+  display: grid;
+  gap: 0.5rem;
+  grid-template: 'title actions' 'description actions';
+  padding-block: var(--gap-xl);
+  padding-inline: max(calc((100% - 80rem) / 2 + var(--gap-md)), var(--gap-xl));
+
+  .site-banner__title {
+    grid-area: title;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    font-weight: bold;
+    font-size: var(--font-size-md);
+    color: var(--color-contrast);
+
+    svg {
+      color: var(--color-red);
+      width: 1.5rem;
+      height: 1.5rem;
+      flex-shrink: 0;
+    }
+  }
+
+  .site-banner__description {
+    grid-area: description;
+  }
+
+  .site-banner__actions {
+    grid-area: actions;
+  }
+
+  a {
+    color: var(--color-red);
+  }
+}
+
+@media (max-width: 1200px) {
+  .app-btn {
+    display: none;
+  }
+}
 </style>
-<style src="vue-multiselect/dist/vue-multiselect.min.css"></style>
+<style src="vue-multiselect/dist/vue-multiselect.css"></style>

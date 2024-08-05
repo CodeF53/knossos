@@ -7,7 +7,7 @@
     v-else-if="
       !['resourcepack', 'shader'].includes(type) &&
       !(type === 'plugin' && search) &&
-      !categories.some((x) => $tag.loaderData.dataPackLoaders.includes(x))
+      !categories.some((x) => tags.loaderData.dataPackLoaders.includes(x))
     "
     class="environment"
   >
@@ -15,9 +15,7 @@
       <GlobeIcon aria-hidden="true" />
       Client or server
     </template>
-    <template
-      v-else-if="clientSide === 'required' && serverSide === 'required'"
-    >
+    <template v-else-if="clientSide === 'required' && serverSide === 'required'">
       <GlobeIcon aria-hidden="true" />
       Client and server
     </template>
@@ -39,9 +37,7 @@
       <ServerIcon aria-hidden="true" />
       Server
     </template>
-    <template
-      v-else-if="serverSide === 'unsupported' && clientSide === 'unsupported'"
-    >
+    <template v-else-if="serverSide === 'unsupported' && clientSide === 'unsupported'">
       <GlobeIcon aria-hidden="true" />
       Unsupported
     </template>
@@ -51,58 +47,52 @@
     </template>
   </span>
 </template>
-<script>
-import InfoIcon from '~/assets/images/utils/info.svg?inline'
-import ClientIcon from '~/assets/images/utils/client.svg?inline'
-import GlobeIcon from '~/assets/images/utils/globe.svg?inline'
-import ServerIcon from '~/assets/images/utils/server.svg?inline'
-export default {
-  name: 'EnvironmentIndicator',
-  components: {
-    InfoIcon,
-    ClientIcon,
-    ServerIcon,
-    GlobeIcon,
+<script setup>
+import InfoIcon from '~/assets/images/utils/info.svg?component'
+import ClientIcon from '~/assets/images/utils/client.svg?component'
+import GlobeIcon from '~/assets/images/utils/globe.svg?component'
+import ServerIcon from '~/assets/images/utils/server.svg?component'
+
+defineProps({
+  type: {
+    type: String,
+    default: 'mod',
   },
-  props: {
-    type: {
-      type: String,
-      default: 'mod',
-    },
-    serverSide: {
-      type: String,
-      required: false,
-      default: '',
-    },
-    clientSide: {
-      type: String,
-      required: false,
-      default: '',
-    },
-    typeOnly: {
-      type: Boolean,
-      required: false,
-      default: false,
-    },
-    alwaysShow: {
-      type: Boolean,
-      required: false,
-      default: false,
-    },
-    search: {
-      type: Boolean,
-      required: false,
-      default: false,
-    },
-    categories: {
-      type: Array,
-      required: false,
-      default() {
-        return []
-      },
+  serverSide: {
+    type: String,
+    required: false,
+    default: '',
+  },
+  clientSide: {
+    type: String,
+    required: false,
+    default: '',
+  },
+  typeOnly: {
+    type: Boolean,
+    required: false,
+    default: false,
+  },
+  alwaysShow: {
+    type: Boolean,
+    required: false,
+    default: false,
+  },
+  search: {
+    type: Boolean,
+    required: false,
+    default: false,
+  },
+  categories: {
+    type: Array,
+    required: false,
+    default() {
+      return []
     },
   },
-}
+})
+
+const tags = useTags()
 </script>
 <style lang="scss" scoped>
 .environment {

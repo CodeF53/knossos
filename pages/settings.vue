@@ -1,53 +1,96 @@
 <template>
-  <div class="normal-page">
-    <div class="normal-page__sidebar">
-      <aside class="universal-card">
-        <h1>Settings</h1>
-        <NavStack>
-          <NavStackItem link="/settings" label="Appearance">
-            <PaintbrushIcon />
-          </NavStackItem>
-          <template v-if="$auth.user">
-            <h3>User settings</h3>
-            <NavStackItem link="/settings/account" label="Account">
-              <UserIcon />
-            </NavStackItem>
-            <NavStackItem link="/settings/follows" label="Followed projects">
-              <HeartIcon />
-            </NavStackItem>
-            <NavStackItem link="/settings/monetization" label="Monetization">
-              <CurrencyIcon />
-            </NavStackItem>
-          </template>
-        </NavStack>
-      </aside>
+  <div>
+    <div class="normal-page no-sidebar">
+      <h1>{{ formatMessage(commonMessages.settingsLabel) }}</h1>
     </div>
-    <div class="normal-page__content">
-      <NuxtChild />
+    <div class="normal-page">
+      <div class="normal-page__sidebar">
+        <aside class="universal-card">
+          <NavStack>
+            <h3>Display</h3>
+            <NavStackItem
+              link="/settings"
+              :label="formatMessage(commonSettingsMessages.appearance)"
+            >
+              <PaintBrushIcon />
+            </NavStackItem>
+            <NavStackItem
+              v-if="isStaging"
+              link="/settings/language"
+              :label="formatMessage(commonSettingsMessages.language)"
+            >
+              <LanguagesIcon />
+            </NavStackItem>
+            <template v-if="auth.user">
+              <h3>Account</h3>
+              <NavStackItem
+                link="/settings/profile"
+                :label="formatMessage(commonSettingsMessages.profile)"
+              >
+                <UserIcon />
+              </NavStackItem>
+              <NavStackItem
+                link="/settings/account"
+                :label="formatMessage(commonSettingsMessages.account)"
+              >
+                <ShieldIcon />
+              </NavStackItem>
+              <NavStackItem
+                link="/settings/authorizations"
+                :label="formatMessage(commonSettingsMessages.authorizedApps)"
+              >
+                <GridIcon />
+              </NavStackItem>
+              <NavStackItem
+                link="/settings/sessions"
+                :label="formatMessage(commonSettingsMessages.sessions)"
+              >
+                <MonitorSmartphoneIcon />
+              </NavStackItem>
+            </template>
+            <template v-if="auth.user">
+              <h3>Developer</h3>
+              <NavStackItem
+                link="/settings/pats"
+                :label="formatMessage(commonSettingsMessages.pats)"
+              >
+                <KeyIcon />
+              </NavStackItem>
+              <NavStackItem
+                link="/settings/applications"
+                :label="formatMessage(commonSettingsMessages.applications)"
+              >
+                <ServerIcon />
+              </NavStackItem>
+            </template>
+          </NavStack>
+        </aside>
+      </div>
+      <div class="normal-page__content">
+        <NuxtPage :route="route" />
+      </div>
     </div>
   </div>
 </template>
+<script setup>
+import {
+  ServerIcon,
+  GridIcon,
+  PaintBrushIcon,
+  UserIcon,
+  ShieldIcon,
+  KeyIcon,
+  LanguagesIcon,
+} from 'omorphia'
+import NavStack from '~/components/ui/NavStack.vue'
+import NavStackItem from '~/components/ui/NavStackItem.vue'
+import MonitorSmartphoneIcon from '~/assets/images/utils/monitor-smartphone.svg?component'
 
-<script>
-import NavStack from '~/components/ui/NavStack'
-import NavStackItem from '~/components/ui/NavStackItem'
+import { commonMessages, commonSettingsMessages } from '~/utils/common-messages.ts'
 
-import PaintbrushIcon from '~/assets/images/utils/paintbrush.svg?inline'
-import UserIcon from '~/assets/images/utils/user.svg?inline'
-import HeartIcon from '~/assets/images/utils/heart.svg?inline'
-import CurrencyIcon from '~/assets/images/utils/currency.svg?inline'
+const { formatMessage } = useVIntl()
 
-export default {
-  name: 'Settings',
-  components: {
-    NavStack,
-    NavStackItem,
-    PaintbrushIcon,
-    UserIcon,
-    HeartIcon,
-    CurrencyIcon,
-  },
-}
+const route = useNativeRoute()
+const auth = await useAuth()
+const isStaging = useRuntimeConfig().public.siteUrl !== 'https://modrinth.com'
 </script>
-
-<style lang="scss" scoped></style>

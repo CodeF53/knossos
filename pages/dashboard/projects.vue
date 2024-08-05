@@ -3,9 +3,9 @@
     <Modal ref="editLinksModal" header="Edit links">
       <div class="universal-modal links-modal">
         <p>
-          Any links you specify below will be overwritten on each of the
-          selected projects. Any you leave blank will be ignored. You can clear
-          a link from all selected projects using the trash can button.
+          Any links you specify below will be overwritten on each of the selected projects. Any you
+          leave blank will be ignored. You can clear a link from all selected projects using the
+          trash can button.
         </p>
         <section class="links">
           <label
@@ -21,14 +21,13 @@
               :disabled="editLinks.issues.clear"
               type="url"
               :placeholder="
-                editLinks.issues.clear
-                  ? 'Existing link will be cleared'
-                  : 'Enter a valid URL'
+                editLinks.issues.clear ? 'Existing link will be cleared' : 'Enter a valid URL'
               "
               maxlength="2048"
             />
             <button
               v-tooltip="'Clear link'"
+              aria-label="Clear link"
               class="square-button label-button"
               :data-active="editLinks.issues.clear"
               @click="editLinks.issues.clear = !editLinks.issues.clear"
@@ -50,13 +49,12 @@
               type="url"
               maxlength="2048"
               :placeholder="
-                editLinks.source.clear
-                  ? 'Existing link will be cleared'
-                  : 'Enter a valid URL'
+                editLinks.source.clear ? 'Existing link will be cleared' : 'Enter a valid URL'
               "
             />
             <button
               v-tooltip="'Clear link'"
+              aria-label="Clear link"
               class="square-button label-button"
               :data-active="editLinks.source.clear"
               @click="editLinks.source.clear = !editLinks.source.clear"
@@ -78,13 +76,12 @@
               type="url"
               maxlength="2048"
               :placeholder="
-                editLinks.wiki.clear
-                  ? 'Existing link will be cleared'
-                  : 'Enter a valid URL'
+                editLinks.wiki.clear ? 'Existing link will be cleared' : 'Enter a valid URL'
               "
             />
             <button
               v-tooltip="'Clear link'"
+              aria-label="Clear link"
               class="square-button label-button"
               :data-active="editLinks.wiki.clear"
               @click="editLinks.wiki.clear = !editLinks.wiki.clear"
@@ -92,10 +89,7 @@
               <TrashIcon />
             </button>
           </div>
-          <label
-            for="discord-invite-input"
-            title="An invitation link to your Discord server."
-          >
+          <label for="discord-invite-input" title="An invitation link to your Discord server.">
             <span class="label__title">Discord invite</span>
           </label>
           <div class="input-group shrink-first">
@@ -113,6 +107,7 @@
             />
             <button
               v-tooltip="'Clear link'"
+              aria-label="Clear link"
               class="square-button label-button"
               :data-active="editLinks.discord.clear"
               @click="editLinks.discord.clear = !editLinks.discord.clear"
@@ -154,10 +149,7 @@
             <CrossIcon />
             Cancel
           </button>
-          <button
-            class="iconified-button brand-button"
-            @click="bulkEditLinks()"
-          >
+          <button class="iconified-button brand-button" @click="bulkEditLinks()">
             <SaveIcon />
             Save changes
           </button>
@@ -169,12 +161,9 @@
       <div class="header__row">
         <h2 class="header__title">Projects</h2>
         <div class="input-group">
-          <button
-            class="iconified-button brand-button"
-            @click="$refs.modal_creation.show()"
-          >
+          <button class="iconified-button brand-button" @click="$refs.modal_creation.show()">
             <PlusIcon />
-            Create a project
+            {{ formatMessage(commonMessages.createAProjectButton) }}
           </button>
         </div>
       </div>
@@ -194,7 +183,7 @@
           </button>
           <div class="push-right">
             <div class="labeled-control-row">
-              Sort By
+              Sort by
               <Multiselect
                 v-model="sortBy"
                 :searchable="false"
@@ -203,8 +192,16 @@
                 :close-on-select="true"
                 :show-labels="false"
                 :allow-empty="false"
-                @input="updateSort()"
-              ></Multiselect>
+                @update:model-value="projects = updateSort(projects, sortBy, descending)"
+              />
+              <button
+                v-tooltip="descending ? 'Descending' : 'Ascending'"
+                class="square-button"
+                @click="updateDescending()"
+              >
+                <DescendingIcon v-if="descending" />
+                <AscendingIcon v-else />
+              </button>
             </div>
           </div>
         </div>
@@ -212,8 +209,8 @@
           <div class="grid-table__row grid-table__header">
             <div>
               <Checkbox
-                :value="selectedProjects === projects"
-                @input="
+                :model-value="selectedProjects === projects"
+                @update:model-value="
                   selectedProjects === projects
                     ? (selectedProjects = [])
                     : (selectedProjects = projects)
@@ -225,24 +222,16 @@
             <div>ID</div>
             <div>Type</div>
             <div>Status</div>
-            <div></div>
+            <div />
           </div>
-          <div
-            v-for="project in projects"
-            :key="`project-${project.id}`"
-            class="grid-table__row"
-          >
+          <div v-for="project in projects" :key="`project-${project.id}`" class="grid-table__row">
             <div>
               <Checkbox
-                :disabled="
-                  (project.permissions & EDIT_DETAILS) === EDIT_DETAILS
-                "
-                :value="selectedProjects.includes(project)"
-                @input="
+                :disabled="(project.permissions & EDIT_DETAILS) === EDIT_DETAILS"
+                :model-value="selectedProjects.includes(project)"
+                @update:model-value="
                   selectedProjects.includes(project)
-                    ? (selectedProjects = selectedProjects.filter(
-                        (it) => it !== project
-                      ))
+                    ? (selectedProjects = selectedProjects.filter((it) => it !== project))
                     : selectedProjects.push(project)
                 "
               />
@@ -250,7 +239,9 @@
             <div>
               <nuxt-link
                 tabindex="-1"
-                :to="`/${project.project_type}/${project.slug}`"
+                :to="`/${$getProjectTypeForUrl(project.project_type, project.loaders)}/${
+                  project.slug ? project.slug : project.id
+                }`"
               >
                 <Avatar
                   :src="project.icon_url"
@@ -265,15 +256,14 @@
               <span class="project-title">
                 <IssuesIcon
                   v-if="project.moderator_message"
-                  v-tooltip="
-                    'Project has a message from the moderators. View the project to see more.'
-                  "
                   aria-label="Project has a message from the moderators. View the project to see more."
                 />
 
                 <nuxt-link
                   class="hover-link wrap-as-needed"
-                  :to="`/${project.project_type}/${project.slug}`"
+                  :to="`/${$getProjectTypeForUrl(project.project_type, project.loaders)}/${
+                    project.slug ? project.slug : project.id
+                  }`"
                 >
                   {{ project.title }}
                 </nuxt-link>
@@ -285,21 +275,19 @@
             </div>
 
             <div>
-              {{ $formatProjectType(project.project_type) }}
+              {{ $formatProjectType($getProjectTypeForUrl(project.project_type, project.loaders)) }}
             </div>
 
             <div>
-              <Badge
-                v-if="project.status"
-                :type="project.status"
-                class="status"
-              />
+              <Badge v-if="project.status" :type="project.status" class="status" />
             </div>
 
             <div>
               <nuxt-link
                 class="square-button"
-                :to="`/${project.project_type}/${project.slug}/settings`"
+                :to="`/${$getProjectTypeForUrl(project.project_type, project.loaders)}/${
+                  project.slug ? project.slug : project.id
+                }/settings`"
               >
                 <SettingsIcon />
               </nuxt-link>
@@ -312,25 +300,26 @@
 </template>
 
 <script>
-import Multiselect from 'vue-multiselect'
+import { Multiselect } from 'vue-multiselect'
 
 import Badge from '~/components/ui/Badge.vue'
 import Checkbox from '~/components/ui/Checkbox.vue'
 import Modal from '~/components/ui/Modal.vue'
-// import ModalConfirm from '~/components/ui/ModalConfirm.vue'
 import Avatar from '~/components/ui/Avatar.vue'
 import ModalCreation from '~/components/ui/ModalCreation.vue'
 import CopyCode from '~/components/ui/CopyCode.vue'
 
-import SettingsIcon from '~/assets/images/utils/settings.svg?inline'
-import TrashIcon from '~/assets/images/utils/trash.svg?inline'
-import IssuesIcon from '~/assets/images/utils/issues.svg?inline'
-import PlusIcon from '~/assets/images/utils/plus.svg?inline'
-import CrossIcon from '~/assets/images/utils/x.svg?inline'
-import EditIcon from '~/assets/images/utils/edit.svg?inline'
-import SaveIcon from '~/assets/images/utils/save.svg?inline'
+import SettingsIcon from '~/assets/images/utils/settings.svg?component'
+import TrashIcon from '~/assets/images/utils/trash.svg?component'
+import IssuesIcon from '~/assets/images/utils/issues.svg?component'
+import PlusIcon from '~/assets/images/utils/plus.svg?component'
+import CrossIcon from '~/assets/images/utils/x.svg?component'
+import EditIcon from '~/assets/images/utils/edit.svg?component'
+import SaveIcon from '~/assets/images/utils/save.svg?component'
+import AscendingIcon from '~/assets/images/utils/sort-asc.svg?component'
+import DescendingIcon from '~/assets/images/utils/sort-desc.svg?component'
 
-export default {
+export default defineNuxtComponent({
   components: {
     Avatar,
     Badge,
@@ -343,17 +332,26 @@ export default {
     EditIcon,
     SaveIcon,
     Modal,
-    // ModalConfirm,
     ModalCreation,
     Multiselect,
     CopyCode,
+    AscendingIcon,
+    DescendingIcon,
+  },
+  async setup() {
+    const { formatMessage } = useVIntl()
+
+    const user = await useUser()
+    await initUserProjects()
+    return { formatMessage, user: ref(user) }
   },
   data() {
     return {
-      projects: [],
+      projects: this.updateSort(this.user.projects, 'Name'),
       versions: [],
       selectedProjects: [],
       sortBy: 'Name',
+      descending: false,
       editLinks: {
         showAffected: false,
         source: {
@@ -375,10 +373,6 @@ export default {
       },
     }
   },
-  fetch() {
-    this.projects = this.$user.projects
-    this.updateSort()
-  },
   head: {
     title: 'Projects - Modrinth',
   },
@@ -392,23 +386,21 @@ export default {
     this.EDIT_MEMBER = 1 << 6
     this.DELETE_PROJECT = 1 << 7
   },
-  mounted() {},
   methods: {
-    updateSort() {
-      switch (this.sortBy) {
+    updateDescending() {
+      this.descending = !this.descending
+      this.projects = this.updateSort(this.projects, this.sortBy, this.descending)
+    },
+    updateSort(projects, sort, descending) {
+      let sortedArray = projects
+      switch (sort) {
         case 'Name':
-          this.projects = this.projects.slice().sort((a, b) => {
-            if (a.title < b.title) {
-              return -1
-            }
-            if (a.title > b.title) {
-              return 1
-            }
-            return 0
+          sortedArray = projects.slice().sort((a, b) => {
+            return a.title.localeCompare(b.title)
           })
           break
         case 'Status':
-          this.projects = this.projects.slice().sort((a, b) => {
+          sortedArray = projects.slice().sort((a, b) => {
             if (a.status < b.status) {
               return -1
             }
@@ -419,7 +411,7 @@ export default {
           })
           break
         case 'Type':
-          this.projects = this.projects.slice().sort((a, b) => {
+          sortedArray = projects.slice().sort((a, b) => {
             if (a.project_type < b.project_type) {
               return -1
             }
@@ -432,37 +424,44 @@ export default {
         default:
           break
       }
+
+      if (descending) {
+        sortedArray = sortedArray.reverse()
+      }
+
+      return sortedArray
     },
     async bulkEditLinks() {
       try {
         const baseData = {
-          issues_url:
-            !this.editLinks.issues.clear &&
-            this.editLinks.issues.val.trim() !== ''
-              ? this.editLinks.issues.val
-              : null,
-          source_url:
-            !this.editLinks.source.clear &&
-            this.editLinks.source.val.trim() !== ''
-              ? this.editLinks.source.val
-              : null,
-          wiki_url:
-            !this.editLinks.wiki.clear && this.editLinks.wiki.val.trim() !== ''
-              ? this.editLinks.wiki.val
-              : null,
-          discord_url:
-            !this.editLinks.discord.clear &&
-            this.editLinks.discord.val.trim() !== ''
-              ? this.editLinks.discord.val
-              : null,
+          issues_url: this.editLinks.issues.clear ? null : this.editLinks.issues.val.trim(),
+          source_url: this.editLinks.source.clear ? null : this.editLinks.source.val.trim(),
+          wiki_url: this.editLinks.wiki.clear ? null : this.editLinks.wiki.val.trim(),
+          discord_url: this.editLinks.discord.clear ? null : this.editLinks.discord.val.trim(),
         }
 
-        await this.$axios.patch(
-          `projects?ids=${JSON.stringify(
-            this.selectedProjects.map((x) => x.id)
-          )}`,
-          baseData,
-          this.$defaultHeaders()
+        if (!baseData.issues_url?.length ?? 1 > 0) {
+          delete baseData.issues_url
+        }
+
+        if (!baseData.source_url?.length ?? 1 > 0) {
+          delete baseData.source_url
+        }
+
+        if (!baseData.wiki_url?.length ?? 1 > 0) {
+          delete baseData.wiki_url
+        }
+
+        if (!baseData.discord_url?.length ?? 1 > 0) {
+          delete baseData.discord_url
+        }
+
+        await useBaseFetch(
+          `projects?ids=${JSON.stringify(this.selectedProjects.map((x) => x.id))}`,
+          {
+            method: 'PATCH',
+            body: baseData,
+          }
         )
 
         this.$refs.editLinksModal.hide()
@@ -473,6 +472,15 @@ export default {
           type: 'success',
         })
         this.selectedProjects = []
+
+        this.editLinks.issues.val = ''
+        this.editLinks.source.val = ''
+        this.editLinks.wiki.val = ''
+        this.editLinks.discord.val = ''
+        this.editLinks.issues.clear = false
+        this.editLinks.source.clear = false
+        this.editLinks.wiki.clear = false
+        this.editLinks.discord.clear = false
       } catch (e) {
         this.$notify({
           group: 'main',
@@ -483,7 +491,7 @@ export default {
       }
     },
   },
-}
+})
 </script>
 <style lang="scss" scoped>
 .grid-table {
@@ -494,6 +502,7 @@ export default {
   border-radius: var(--size-rounded-sm);
   overflow: hidden;
   margin-top: var(--spacing-card-md);
+  outline: 1px solid transparent;
 
   .grid-table__row {
     display: contents;
@@ -608,7 +617,7 @@ export default {
   gap: var(--spacing-card-xs);
 
   svg {
-    color: var(--color-special-orange);
+    color: var(--color-orange);
   }
 }
 
@@ -627,6 +636,7 @@ export default {
   min-width: 0;
   align-items: center;
   gap: var(--spacing-card-md);
+  white-space: nowrap;
 }
 
 .small-select {
@@ -635,7 +645,7 @@ export default {
 }
 
 .label-button[data-active='true'] {
-  --background-color: var(--color-special-red);
+  --background-color: var(--color-red);
   --text-color: var(--color-brand-inverted);
 }
 

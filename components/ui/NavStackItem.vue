@@ -23,10 +23,9 @@
 </template>
 
 <script>
-import ChevronRightIcon from '~/assets/images/utils/chevron-right.svg?inline'
+import ChevronRightIcon from '~/assets/images/utils/chevron-right.svg?component'
 
 export default {
-  name: 'NavStackItem',
   components: {
     ChevronRightIcon,
   },
@@ -71,6 +70,7 @@ export default {
   box-shadow: none;
   padding: 0;
   width: 100%;
+  outline: none;
 
   :where(.nav-link) {
     --text-color: var(--color-text);
@@ -88,7 +88,16 @@ export default {
     background-color: var(--background-color);
   }
 
-  &.nuxt-link-exact-active {
+  &:focus-visible {
+    .nav-content {
+      border-radius: 0.25rem;
+    }
+  }
+
+  &.router-link-exact-active {
+    outline: 2px solid transparent;
+    border-radius: 0.25rem;
+
     .nav-content {
       color: var(--color-button-text-active);
       background-color: var(--color-button-bg);

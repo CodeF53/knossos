@@ -1,5 +1,5 @@
 <template>
-  <nav class="navigation" :class="{ 'use-animation': useAnimation }">
+  <nav class="navigation">
     <NuxtLink
       v-for="(link, index) in filteredLinks"
       v-show="link.shown === undefined ? true : link.shown"
@@ -7,123 +7,87 @@
       ref="linkElements"
       :to="query ? (link.href ? `?${query}=${link.href}` : '?') : link.href"
       class="nav-link button-animation"
-      :class="{ 'is-active': index === activeIndex }"
     >
       <span>{{ link.label }}</span>
     </NuxtLink>
-
     <div
       class="nav-indicator"
-      :style="`visibility: ${
-        useAnimation && activeIndex !== -1 ? 'visible' : 'hidden'
-      }; left: ${indicator.left}px; right: ${indicator.right}px;
-          top: ${indicator.top}px; transition: left 350ms ${
-        indicator.direction === 'left'
-          ? 'cubic-bezier(1,0,.3,1) -140ms'
-          : 'cubic-bezier(.75,-0.01,.24,.99) -40ms'
-      },right 350ms ${
-        indicator.direction === 'right'
-          ? 'cubic-bezier(1,0,.3,1) -140ms'
-          : 'cubic-bezier(.75,-0.01,.24,.99) -40ms'
-      }, top 100ms ease-in-out`"
-    />
+      :style="{
+        left: positionToMoveX,
+        top: positionToMoveY,
+        width: sliderWidth,
+        opacity: activeIndex === -1 ? 0 : 1,
+      }"
+      aria-hidden="true"
+    ></div>
   </nav>
 </template>
 
-<script>
-export default {
-  name: 'NavRow',
-  props: {
-    links: {
-      default: () => [],
-      type: Array,
-    },
-    query: {
-      default: null,
-      type: String,
-    },
-  },
-  data() {
-    return {
-      useAnimation: false,
-      oldIndex: -1,
-      activeIndex: -1,
-      indicator: {
-        left: 0,
-        right: 0,
-        top: 22,
-        direction: 'right',
-      },
-    }
-  },
-  computed: {
-    filteredLinks() {
-      return this.links.filter((x) => (x.shown === undefined ? true : x.shown))
-    },
-  },
-  watch: {
-    '$route.path': {
-      handler() {
-        this.pickLink()
-      },
-    },
-    '$route.query': {
-      handler() {
-        if (this.query) this.pickLink()
-      },
-    },
-  },
-  mounted() {
-    this.pickLink()
-  },
-  methods: {
-    pickLink() {
-      if (this.oldIndex === -1) {
-        this.useAnimation = false
+<script setup>
+const route = useNativeRoute()
 
-        setTimeout(() => {
-          this.useAnimation = true
-        }, 300)
-      }
-
-      this.activeIndex = this.query
-        ? this.filteredLinks.findIndex(
-            (x) =>
-              (x.href === '' ? undefined : x.href) ===
-              this.$route.query[this.query]
-          )
-        : this.filteredLinks.findIndex(
-            (x) => x.href === decodeURIComponent(this.$route.path)
-          )
-
-      if (this.activeIndex !== -1) {
-        this.startAnimation()
-      } else {
-        this.oldIndex = -1
-      }
-    },
-    startAnimation() {
-      if (this.$refs.linkElements[this.activeIndex]) {
-        this.indicator.direction =
-          this.activeIndex < this.oldIndex ? 'left' : 'right'
-
-        this.indicator.left =
-          this.$refs.linkElements[this.activeIndex].$el.offsetLeft
-        this.indicator.right =
-          this.$refs.linkElements[this.activeIndex].$el.parentElement
-            .offsetWidth -
-          this.$refs.linkElements[this.activeIndex].$el.offsetLeft -
-          this.$refs.linkElements[this.activeIndex].$el.offsetWidth
-        this.indicator.top =
-          this.$refs.linkElements[this.activeIndex].$el.offsetTop +
-          this.$refs.linkElements[this.activeIndex].$el.offsetHeight +
-          1
-      }
-
-      this.oldIndex = this.activeIndex
-    },
+const props = defineProps({
+  links: {
+    default: () => [],
+    type: Array,
   },
+  query: {
+    default: null,
+    type: String,
+  },
+})
+
+const sliderPositionX = ref(0)
+const sliderPositionY = ref(18)
+const selectedElementWidth = ref(0)
+const activeIndex = ref(-1)
+const oldIndex = ref(-1)
+
+const filteredLinks = computed(() =>
+  props.links.filter((x) => (x.shown === undefined ? true : x.shown))
+)
+const positionToMoveX = computed(() => `${sliderPositionX.value}px`)
+const positionToMoveY = computed(() => `${sliderPositionY.value}px`)
+const sliderWidth = computed(() => `${selectedElementWidth.value}px`)
+
+function pickLink() {
+  console.log('link is picking')
+
+  activeIndex.value = props.query
+    ? filteredLinks.value.findIndex(
+        (x) => (x.href === '' ? undefined : x.href) === route.path[props.query]
+      )
+    : filteredLinks.value.findIndex((x) => x.href === decodeURIComponent(route.path))
+
+  if (activeIndex.value !== -1) {
+    startAnimation()
+  } else {
+    oldIndex.value = -1
+    sliderPositionX.value = 0
+    selectedElementWidth.value = 0
+  }
 }
+
+const linkElements = ref()
+
+function startAnimation() {
+  const el = linkElements.value[activeIndex.value].$el
+
+  sliderPositionX.value = el.offsetLeft
+  sliderPositionY.value = el.offsetTop + el.offsetHeight
+  selectedElementWidth.value = el.offsetWidth
+}
+
+onMounted(() => {
+  window.addEventListener('resize', pickLink)
+  pickLink()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', pickLink)
+})
+
+watch(route, () => pickLink())
 </script>
 
 <style lang="scss" scoped>
@@ -141,19 +105,6 @@ export default {
     color: var(--color-text);
     position: relative;
 
-    &::after {
-      content: '';
-      display: block;
-      position: absolute;
-      bottom: -5px;
-      width: 100%;
-      border-radius: var(--size-rounded-max);
-      height: 0.25rem;
-      transition: opacity 0.1s ease-in-out;
-      background-color: var(--color-brand);
-      opacity: 0;
-    }
-
     &:hover {
       color: var(--color-text);
 
@@ -166,8 +117,14 @@ export default {
       opacity: 0.2;
     }
 
-    &.is-active {
+    &.router-link-exact-active {
       color: var(--color-text);
+
+      &:not(:focus-visible) {
+        outline: 2px solid transparent;
+        outline-offset: 6px;
+        border-radius: 0.25rem;
+      }
 
       &::after {
         opacity: 1;
@@ -186,11 +143,14 @@ export default {
   .nav-indicator {
     position: absolute;
     height: 0.25rem;
+    bottom: -5px;
+    left: 0;
+    width: 3rem;
+    transition: all ease-in-out 0.2s;
     border-radius: var(--size-rounded-max);
     background-color: var(--color-brand);
-    transition-property: left, right, top;
-    transition-duration: 350ms;
-    visibility: hidden;
+    outline: 2px solid transparent;
+    outline-offset: -2px;
 
     @media (prefers-reduced-motion) {
       transition: none !important;
